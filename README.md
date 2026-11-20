@@ -17,7 +17,7 @@
     <img src="https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Deployed on Vercel" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License: MIT" />
+    <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" alt="License: Apache 2.0" />
   </a>
   <a href="https://github.com/ayumadeit/Thumbnix/stargazers">
     <img src="https://img.shields.io/github/stars/ayumadeit/Thumbnix?style=for-the-badge&color=FF941F" alt="GitHub Stars" />
@@ -194,7 +194,7 @@ Built with curiosity, pixels, and passion by **Ayush Anand**:
 
 ## 📄 License
 
-This project is open-source and available under the [MIT License](LICENSE).
+This project is open-source and available under the [Apache 2.0 License](LICENSE).
 
 <p align="center">
   Made with 🧡 & a tiny orange buddy · <strong>Thumbnix</strong>
