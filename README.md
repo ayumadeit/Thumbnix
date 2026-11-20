@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Thumbnails. Without the drama.</strong><br>
-  A lightweight, interactive YouTube thumbnail grabber and previewer powered by a friendly orange mascot.
+  A lightweight, secure, and playful YouTube thumbnail downloader & previewer powered by a friendly orange mascot.
 </p>
 
 <p align="center">
@@ -28,7 +28,13 @@
 
 ## 💡 About Thumbnix
 
-**Thumbnix** is a fast, dependency-free web tool built to fetch, preview, and download YouTube video thumbnails in any available resolution. No bloated frameworks, no registrations, no tracking forms, and zero drama — just paste your link and grab your thumbnail in seconds.
+**Thumbnix** is a high-performance, full-stack utility designed to fetch, preview, and cleanly download YouTube video thumbnails in all available resolutions. It pairs a playful vanilla HTML/CSS/JS frontend with a lightweight, secure TypeScript serverless backend running on Vercel.
+
+- **No CORS issues:** Downloads save directly to your device with proper filenames via serverless streaming.
+- **Genuine availability check:** Detects YouTube's 120×90 dummy placeholder images by parsing raw JPEG SOF marker headers.
+- **Video metadata:** Fetches live video title and channel name via YouTube oEmbed without requiring any API keys.
+- **Download all as ZIP:** Bundles every available resolution into a single `.zip` file on the fly.
+- **Zero tracking & abuse protection:** Rate-limited by IP (hashed in memory), strict SSRF allowlists, and no user data stored.
 
 👉 **Try it live at [https://thumbnix-yt.vercel.app](https://thumbnix-yt.vercel.app/)**
 
@@ -36,19 +42,19 @@
 
 ## ✨ Features
 
-- 🎯 **Maximum HD Quality**: Automatically extracts the highest available resolution (`maxresdefault` up to 1080p).
-- 📐 **All Resolutions Checked**: Probes YouTube's CDN in real-time to find which sizes actually exist for your video:
+- 🎯 **Maximum HD Quality**: Extracts the highest available resolution (`maxresdefault` up to 1080p).
+- 📐 **True Server-Side Verification**: Inspects JPEG binary markers to verify real dimensions and file sizes, filtering out fake placeholders.
   - **Maximum (HD)**: `1920×1080` / `1280×720`
   - **Standard**: `640×480`
   - **High**: `480×360`
   - **Medium**: `320×180`
   - **Default**: `120×90`
-- 🎬 **YouTube Shorts & Live Streams**: Supports `youtube.com/watch`, `youtu.be/`, `/shorts/`, `/embed/`, and `/live/` links.
-- 👁️ **Instant Previews**: Inspect and compare all sizes before downloading.
-- 📋 **One-Click Actions**: Single-click to direct download, copy image URLs, or download all sizes sequentially.
-- 🌓 **Dark & Light Mode**: Seamless theme switching with persistent local storage preferences.
-- 🍊 **Interactive Mascot**: A responsive, animated little buddy that reacts to your mouse, link submissions, and clicks!
-- 🔒 **Zero Sign-Ups & Privacy-First**: Everything is executed directly in your browser without saving user data.
+- 🎬 **YouTube Shorts & Live Streams**: Supports `youtube.com/watch`, `youtu.be/`, `/shorts/`, `/embed/`, `/live/`, and bare 11-char IDs.
+- 📦 **Download All (ZIP)**: One-click bundle to download all available resolutions in `thumbnix-[id].zip`.
+- 🏷️ **Video & Creator Context**: Displays the real video title and creator channel name on the results card.
+- 🛡️ **Graceful Fallback**: If the API is offline or unreachable, the frontend seamlessly falls back to client-side probing so the UI never breaks.
+- 🌓 **Dark & Light Mode**: Theme toggle with persistent local storage.
+- 🍊 **Interactive Mascot**: Responsive SVG buddy that tracks your mouse and reacts to your interactions.
 
 ---
 
@@ -68,60 +74,112 @@
 
 ---
 
-## 🚀 How It Works
+## 📡 API Reference
 
-```mermaid
-flowchart LR
-    A["1. Copy Link\n(YouTube / Shorts)"] --> B["2. Paste in Thumbnix"]
-    B --> C["3. Real-Time Probe\n(YouTube CDN)"]
-    C --> D["4. Download HD / All Sizes"]
+All responses return standard JSON with playful error messages unless streaming a binary file.
+
+### 1. `GET /api/thumbnails?url=<url_or_id>`
+Probes all resolutions, extracts metadata, and checks availability.
+
+**Example Request:**
+```http
+GET /api/thumbnails?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ
 ```
 
-1. **Copy**: Copy any YouTube video, Shorts, or live stream link.
-2. **Paste**: Drop it into Thumbnix's search bar.
-3. **Grab**: Select your desired resolution and hit **Download** or **Copy URL**.
+**Example Response:**
+```json
+{
+  "videoId": "dQw4w9WgXcQ",
+  "metadata": {
+    "title": "Rick Astley - Never Gonna Give You Up (Official Music Video)",
+    "channel": "Rick Astley"
+  },
+  "best": "maxresdefault",
+  "thumbnails": [
+    {
+      "quality": "maxresdefault",
+      "label": "Maximum (HD)",
+      "width": 1280,
+      "height": 720,
+      "bytes": 104233,
+      "url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "downloadUrl": "/api/download?id=dQw4w9WgXcQ&quality=maxresdefault"
+    }
+  ]
+}
+```
+
+### 2. `GET /api/download?id=<id>&quality=<quality>`
+Streams the thumbnail directly with `Content-Disposition: attachment; filename="thumbnix-[id]-[quality].jpg"` for native 1-click downloads.
+- Validates `id` with `^[A-Za-z0-9_-]{11}$` and `quality` against fixed whitelist.
+- Only ever connects to `i.ytimg.com` (SSRF protected).
+
+### 3. `GET /api/download-all?id=<id>`
+Fetches all available resolutions and streams a generated ZIP archive (`thumbnix-[id].zip`).
+- Filenames inside ZIP: `{id}-{quality}-{width}x{height}.jpg`.
+
+### 4. `GET /api/health`
+Returns `{ "ok": true, "version": "1.0.0" }`.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🔒 Security & Abuse Protection
 
-- **Frontend**: Pure Semantic HTML5, Modern CSS3 with CSS Variables & Keyframe Animations, Vanilla ES6+ JavaScript.
-- **Hosting & CDN**: Deployed on [Vercel](https://vercel.com) Edge Network with `vercel.json` clean URL routing.
-- **Assets**: Custom 3D brand logo and favicon.
+- **Rate Limiting:** 30 req/min for `/api/thumbnails` and 20 req/min for download endpoints per IP. Hashed with SHA-256 in memory; IPs are never logged. Optional Upstash Redis integration for distributed deployments.
+- **SSRF Protection:** Strict allowlists only permit requests to `i.ytimg.com` and `www.youtube.com/oembed`. Query parameters are strictly validated with Zod.
+- **Security Headers:** `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and restricted CORS.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Vanilla HTML5, Modern CSS3 (Variables & Keyframes), Vanilla ES6+ JavaScript.
+- **Backend**: Vercel Serverless Functions (Node.js 20, TypeScript).
+- **Validation & Utilities**: `zod`, `fflate` (high-speed pure JS ZIP generator).
+- **Testing**: `vitest` (unit tests for URL parser, JPEG SOF reader, endpoints, security, and rate limiting).
+- **Hosting**: [Vercel](https://vercel.com) Edge Network.
 
 ---
 
 ## 💻 Local Development
 
-You can run Thumbnix locally without any build steps or package managers:
-
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/ayumadeit/Thumbnix.git
-
-# 2. Navigate to the project directory
 cd Thumbnix
 
-# 3. Open directly in your browser or run any static server:
-# Using Python:
-python -m http.server 3000
+# 2. Install dependencies
+npm install
 
-# Using Node:
-npx serve .
+# 3. Run test suite
+npm test
+
+# 4. Start local development server with Vercel CLI
+npx vercel dev
 ```
 
 Visit `http://localhost:3000` in your browser.
 
 ---
 
-## 🗺️ Roadmap & Future Backend
+## ⚙️ Environment Variables
 
-Thumbnix is designed to expand into a full-stack utility. Planned backend capabilities include:
+Copy `.env.example` to `.env`:
 
-- [ ] **Serverless Proxy Endpoint**: Bypass browser CORS restrictions for 100% direct instant downloads on all browsers.
-- [ ] **One-Click ZIP Bundle**: Download all thumbnail resolutions zipped into a single archive file.
-- [ ] **Format Conversion**: Convert thumbnails to `.png` or `.webp` directly before downloading.
-- [ ] **Video Metadata**: Fetch channel name, title, duration, and view counts via YouTube oEmbed API.
+```ini
+# Production origin allowed for CORS (defaults to https://thumbnix-yt.vercel.app and localhost)
+ALLOWED_ORIGIN=https://thumbnix-yt.vercel.app
+
+# Optional: Upstash Redis for distributed rate limiting across serverless instances
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+---
+
+## ⚖️ Copyright & Fair Use Notice
+
+Thumbnix is an independent utility that only retrieves and previews thumbnail images that YouTube already publishes publicly for videos. Downloading a thumbnail does not grant ownership, copyright, or commercial reuse rights. All rights, title, and intellectual property remain with the respective content creators and copyright holders.
 
 ---
 
